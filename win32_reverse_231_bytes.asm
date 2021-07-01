@@ -1,10 +1,10 @@
-# Shellcode Title: Windows/x86 - Reverse Shell + Position-Independent-Code (PIC) + Null-Free Shellcode (231 Bytes)
-# Shellcode Author: @TheCyberBepop, Shadi Habbal (@Kerpanic)
-# Date: 2020-07-01
-# Technique: PEB & Export Table Directory
-# Tested On: Windows 10 Professional (x86) 10.0.16299 Build 16299
-# Assumptions: Application should already have ws2_32.dll loaded if sending the payload to a windows socket
-# Note: Remember to update the hash values, port, and IP address in this PoC to whatever you are using!
+; Shellcode Title: Windows/x86 - Reverse Shell + Position-Independent-Code (PIC) + Null-Free Shellcode (231 Bytes)
+; Shellcode Author: @TheCyberBepop, Shadi Habbal (@Kerpanic)
+; Date: 2020-07-01
+; Technique: PEB & Export Table Directory
+; Tested On: Windows 10 Professional (x86) 10.0.16299 Build 16299
+; Assumptions: Application should already have ws2_32.dll loaded if sending the payload to a windows socket
+; Note: Remember to update the hash values, port, and IP address in this PoC to whatever you are using!
 
     start:                             
         mov ebp, esp                    ; Create new stack frame
